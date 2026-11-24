@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 大富翁雙骰冒險 (Double Dice Monopoly Adventure)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans TC & Cinzel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tabletop: {
+                            bg: '#0f172a',
+                            panel: '#1e293b',
+                            card: '#162033',
+                            border: '#334155',
+                            gold: '#f59e0b',
+                            goldLight: '#fde047',
+                            parchment: '#fef3c7'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                        fantasy: ['Cinzel', '"Noto Sans TC"', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.1) 0%, transparent 45%),
+                linear-gradient(180deg, #0f172a 0%, #090d16 100%);
+            color: #f1f5f9;
+            font-family: 'Noto Sans TC', sans-serif;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* 3D Tabletop Dice Styling */
+        .die-3d {
+            background: linear-gradient(145deg, #ffffff 0%, #f1ece1 70%, #dcd3c1 100%);
+            box-shadow:
+                0 6px 0 #948977,
+                0 10px 18px rgba(0, 0, 0, 0.55),
+                inset 0 2px 3px rgba(255, 255, 255, 0.95);
+            border: 1.5px solid #e7decb;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+        }
+
+        .die-3d.die-purple-lock {
+            background: linear-gradient(145deg, #f3e8ff 0%, #d8b4fe 75%, #a855f7 100%);
+            box-shadow:
+                0 6px 0 #6b21a8,
+                0 0 22px rgba(168, 85, 247, 0.8),
+                inset 0 2px 4px rgba(255, 255, 255, 0.9);
+            border-color: #c084fc;
+        }
+
+        .die-3d.die-starry-glow {
+            background: linear-gradient(145deg, #e0f2fe 0%, #bae6fd 75%, #7dd3fc 100%);
+            box-shadow:
+                0 6px 0 #0369a1,
+                0 0 22px rgba(56, 189, 248, 0.8),
+                inset 0 2px 4px rgba(255, 255, 255, 0.95);
+            border-color: #38bdf8;
+        }
+
+        .die-3d.die-doubles-glow {
+            box-shadow:
+                0 6px 0 #b45309,
+                0 0 25px rgba(250, 204, 21, 0.85),
+                inset 0 2px 4px rgba(255, 255, 255, 0.95);
+            border-color: #facc15;
+        }
+
+        .pip {
+            border-radius: 9999px;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55), 0 0.5px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        /* Animations */
+        @keyframes diceTumble {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-18deg) scale(1.1) translateY(-6px); }
+            50% { transform: rotate(16deg) scale(0.95) translateY(2px); }
+            75% { transform: rotate(-10deg) scale(1.08) translateY(-4px); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        .animate-dice-roll {
+            animation: diceTumble 0.45s ease-in-out infinite;
+        }
+
+        @keyframes pawnHop {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-10px) scale(1.22); }
+        }
+        .animate-pawn-hop {
+            animation: pawnHop 0.24s ease-out;
+        }
+
+        @keyframes cardPop {
+            0% { opacity: 0; transform: scale(0.75) translateY(12px); }
+            70% { opacity: 1; transform: scale(1.04) translateY(-2px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-card-pop {
+            animation: cardPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes pulseGold {
+            0%, 100% { box-shadow: 0 0 12px rgba(245, 158, 11, 0.35); }
+            50% { box-shadow: 0 0 24px rgba(245, 158, 11, 0.75); }
+        }
+        .glow-gold-pulse {
+            animation: pulseGold 2.4s infinite;
+        }
+
+        /* Tile highlight pulse when landed */
+        .tile-active-flash {
+            box-shadow: inset 0 0 18px rgba(250, 204, 21, 0.75), 0 0 14px rgba(250, 204, 21, 0.5);
+            border-color: #fde047 !important;
+            z-index: 15;
+        }
+
+        /* Custom scrollbar for Adventure Log */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Ambient Confetti / Particle Canvas -->
+    <canvas id="fx-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- ============================================================ -->
+    <!-- SCREEN 1: CHARACTER & LUCKY DICE SETUP SCREEN                -->
+    <!-- ============================================================ -->
+    <section id="setup-screen" class="flex-grow flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-4xl">
+            <!-- Hero Header -->
+            <div class="text-center mb-7">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-bold tracking-wider mb-3 shadow-md">
+                    <span>🏰</span> 奇幻桌遊競速 · 兩圈奪冠挑戰
+                </div>
+                <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 drop-shadow-[0_2px_12px_rgba(245,158,11,0.35)]">
+                    🎲 大富翁雙骰冒險
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base mt-2">
+                    Double Dice Monopoly Adventure — 擲出雙骰、發動豹子通殺與幸運技能，率先跑完兩圈！
+                </p>
+            </div>
+
+            <!-- Setup Card -->
+            <div class="bg-slate-800/75 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-5 sm:p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-56 h-56 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <form id="setup-form" onsubmit="startAdventure(event)" class="space-y-6 relative z-10">
+                    <!-- Adventurer Name Input -->
+                    <div>
+                        <label for="player-name" class="block text-amber-300 font-bold text-sm sm:text-base mb-2 flex items-center gap-2">
+                            <span>🛡️</span> 冒險者名字 (Adventurer Name)
+                        </label>
+                        <input
+                            type="text"
+                            id="player-name"
+                            maxlength="12"
+                            placeholder="勇者小傑"
+                            class="w-full bg-slate-900/90 border-2 border-slate-700 focus:border-amber-400 rounded-2xl px-4 py-3.5 text-amber-100 placeholder-slate-500 text-base sm:text-lg font-bold focus:outline-none focus:ring-4 focus:ring-amber-500/20 transition-all"
+                        >
+                        <p class="text-xs text-slate-400 mt-1.5">※ 若未輸入名字，將自動以預設勇者「勇者小傑」出戰。</p>
+                    </div>
+
+                    <!-- 4 Lucky Dice Skill Cards -->
+                    <div>
+                        <label class="block text-amber-300 font-bold text-sm sm:text-base mb-3 flex items-center gap-2">
+                            <span>✨</span> 選擇專屬幸運骰子技能（四擇一）
+                        </label>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="skill-cards-grid">
+                            <!-- 1. Magic Purple -->
+                            <div onclick="selectSkill('purple')" id="skill-card-purple"
+                                class="skill-card cursor-pointer rounded-2xl p-4 border-2 transition-all duration-200 bg-slate-900/80 border-slate-700 hover:border-purple-400/70 relative">
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-3xl">💜</span>
+                                        <div>
+                                            <h3 class="font-black text-purple-300 text-base sm:text-lg">魔法紫 (Magic Purple)</h3>
+                                            <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/40">
+                                                出發起算，共 3 回合
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="check-badge hidden w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-black flex items-center justify-center shadow">✓</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2">
+                                    玩家其中一顆骰子<span class="text-purple-300 font-bold">保證為 6 點</span>，另一顆隨機。穩定高點數輸出！
+                                </p>
+                            </div>
+
+                            <!-- 2. Starry Blue -->
+                            <div onclick="selectSkill('blue')" id="skill-card-blue"
+                                class="skill-card cursor-pointer rounded-2xl p-4 border-2 transition-all duration-200 bg-slate-900/80 border-slate-700 hover:border-sky-400/70 relative">
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-3xl">💙</span>
+                                        <div>
+                                            <h3 class="font-black text-sky-300 text-base sm:text-lg">星空藍 (Starry Blue)</h3>
+                                            <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-200 border border-sky-500/40">
+                                                出發起算，共 1 回合
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="check-badge hidden w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-black flex items-center justify-center shadow">✓</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2">
+                                    玩家<span class="text-sky-300 font-bold">必定擲出「豹子」</span>（兩顆點數相同），點數隨機。開局強力搶攻！
+                                </p>
+                            </div>
+
+                            <!-- 3. Courage Red -->
+                            <div onclick="selectSkill('red')" id="skill-card-red"
+                                class="skill-card cursor-pointer rounded-2xl p-4 border-2 transition-all duration-200 bg-slate-900/80 border-slate-700 hover:border-rose-400/70 relative">
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-3xl">❤️</span>
+                                        <div>
+                                            <h3 class="font-black text-rose-300 text-base sm:text-lg">勇氣紅 (Courage Red)</h3>
+                                            <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-200 border border-rose-500/40">
+                                                出發起算，共 1 回合
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="check-badge hidden w-6 h-6 rounded-full bg-rose-500 text-white text-xs font-black flex items-center justify-center shadow">✓</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2">
+                                    若電腦本回合獲勝，<span class="text-rose-300 font-bold">抵銷該勝場，電腦不前進</span>。堅不可摧的絕對防禦！
+                                </p>
+                            </div>
+
+                            <!-- 4. Lucky Gold -->
+                            <div onclick="selectSkill('gold')" id="skill-card-gold"
+                                class="skill-card cursor-pointer rounded-2xl p-4 border-2 transition-all duration-200 bg-slate-900/80 border-slate-700 hover:border-amber-400/70 relative">
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-3xl">💛</span>
+                                        <div>
+                                            <h3 class="font-black text-amber-300 text-base sm:text-lg">幸運金 (Lucky Gold)</h3>
+                                            <span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/40">
+                                                出發起算，共 3 回合
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="check-badge hidden w-6 h-6 rounded-full bg-amber-500 text-slate-950 text-xs font-black flex items-center justify-center shadow">✓</span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mt-2">
+                                    電腦若擲出豹子，<span class="text-amber-300 font-bold">自動持續重擲兩顆骰子</span>直到不是豹子為止！
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Button -->
+                    <button type="submit"
+                        class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-lg sm:text-xl tracking-wide shadow-[0_6px_25px_rgba(245,158,11,0.45)] hover:shadow-[0_8px_30px_rgba(245,158,11,0.65)] transition-all duration-200 transform active:scale-[0.99] flex items-center justify-center gap-2.5">
+                        <span>🚀</span> 開始冒險 (Start Adventure)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- SCREEN 2: MAIN GAME BOARD & BATTLE ARENA                     -->
+    <!-- ============================================================ -->
+    <section id="game-screen" class="hidden flex-grow flex flex-col max-w-[1440px] w-full mx-auto px-3 sm:px-6 py-3 sm:py-4 gap-3 sm:gap-4">
+
+        <!-- TOP HEADER BAR -->
+        <header class="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl px-4 py-2.5 sm:py-3 shadow-lg flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand Title -->
+            <div class="flex items-center gap-2.5">
+                <span class="text-2xl sm:text-3xl">🎲</span>
+                <div>
+                    <h1 class="font-black text-base sm:text-xl text-amber-300 tracking-wide leading-tight">
+                        大富翁雙骰冒險
+                    </h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Double Dice Monopoly Adventure · 兩圈奪冠賽</p>
+                </div>
+            </div>
+
+            <!-- Status Pills: Round & Active Skill -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <!-- Round Badge -->
+                <div class="bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                    <span class="text-xs text-slate-400">回合</span>
+                    <span id="header-round" class="font-black text-amber-400 text-sm sm:text-base">第 1 回合</span>
+                </div>
+
+                <!-- Active Skill Indicator -->
+                <div id="header-skill-pill" class="bg-slate-900/90 border border-purple-500/50 rounded-xl px-3 py-1.5 flex items-center gap-2 transition-all">
+                    <span id="header-skill-icon" class="text-base">💜</span>
+                    <div class="leading-tight">
+                        <div class="flex items-center gap-1.5">
+                            <span id="header-skill-name" class="font-bold text-xs sm:text-sm text-purple-300">魔法紫</span>
+                            <span id="header-skill-status" class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                                🔥 技能發動中
+                            </span>
+                        </div>
+                        <div id="header-skill-turns" class="text-[10px] text-slate-400">剩餘 3 回合</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Utility Controls: Sound & Restart -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSound()" id="sound-btn"
+                    class="bg-slate-900/90 hover:bg-slate-700 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-200 transition-all flex items-center gap-1.5"
+                    title="切換音效">
+                    <span id="sound-icon">🔊</span>
+                    <span class="hidden md:inline text-xs">音效開</span>
+                </button>
+
+                <button onclick="openRestartConfirm()"
+                    class="bg-slate-900/90 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-500/60 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-300 hover:text-rose-300 transition-all flex items-center gap-1">
+                    <span>🔄</span>
+                    <span>重新開始</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT GRID: Left/Center Board (7 cols) + Right Dashboard (5 cols) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start flex-grow">
+
+            <!-- ==================================================== -->
+            <!-- 6x6 PERIMETER MONOPOLY BOARD + 4x4 CENTER DUEL ARENA -->
+            <!-- ==================================================== -->
+            <div class="lg:col-span-7 xl:col-span-8 w-full">
+                <div class="bg-slate-900/90 border-2 border-amber-500/30 rounded-3xl p-2 sm:p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.65)]">
+                    <!-- 6x6 CSS Grid -->
+                    <div id="monopoly-board" class="grid grid-cols-6 grid-rows-6 gap-1 sm:gap-2 aspect-square w-full max-w-[760px] mx-auto relative">
+
+                        <!-- Perimeter 20 Tiles will be injected dynamically into their exact grid-row / grid-col positions -->
+
+                        <!-- CENTER 4x4 DICE DUEL ARENA (Cols 2..5, Rows 2..5) -->
+                        <div class="col-start-2 col-end-6 row-start-2 row-end-6 bg-gradient-to-br from-slate-800/95 via-slate-900/95 to-slate-950/95 border border-amber-500/30 rounded-2xl p-2.5 sm:p-4 flex flex-col justify-between relative overflow-hidden shadow-inner">
+                            <!-- Subtle Decorative Ring -->
+                            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.08)_0%,transparent_70%)] pointer-events-none"></div>
+
+                            <!-- Top Arena Header & Skill Banner -->
+                            <div class="relative z-10 text-center space-y-1">
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-950/80 border border-slate-700/80 text-[10px] sm:text-xs font-bold text-amber-300">
+                                    <span>⚔️</span> 雙骰決鬥場 · 豹子通殺
+                                </div>
+                                <!-- Skill Activation Flash Banner -->
+                                <div id="skill-flash-banner" class="hidden text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-400/50 text-purple-200 animate-card-pop">
+                                    ✨ 技能發動提示
+                                </div>
+                            </div>
+
+                            <!-- Dice Arena: Player 2 Dice vs Computer 2 Dice -->
+                            <div class="relative z-10 grid grid-cols-11 items-center gap-1 my-auto py-1">
+                                <!-- Player Dice Side (5 cols) -->
+                                <div class="col-span-5 flex flex-col items-center bg-slate-800/60 border border-amber-500/25 rounded-xl p-1.5 sm:p-3">
+                                    <div class="flex items-center gap-1 mb-1.5">
+                                        <span class="text-xs sm:text-sm">🛡️</span>
+                                        <span id="arena-player-label" class="font-bold text-[11px] sm:text-xs text-amber-300 truncate max-w-[75px] sm:max-w-[110px]">勇者</span>
+                                    </div>
+
+                                    <!-- 2 Visual 3D Dice -->
+                                    <div class="flex items-center justify-center gap-1.5 sm:gap-3 my-1">
+                                        <div id="p-die-1" class="die-3d w-10 h-10 sm:w-14 sm:h-14 rounded-xl p-1.5 sm:p-2 grid grid-cols-3 grid-rows-3 gap-0.5"></div>
+                                        <div id="p-die-2" class="die-3d w-10 h-10 sm:w-14 sm:h-14 rounded-xl p-1.5 sm:p-2 grid grid-cols-3 grid-rows-3 gap-0.5"></div>
+                                    </div>
+
+                                    <!-- Total & Doubles Badge -->
+                                    <div class="mt-1.5 flex flex-col items-center gap-1 min-h-[34px] sm:min-h-[40px]">
+                                        <div class="text-[11px] sm:text-xs text-slate-300 font-bold">
+                                            總點數：<span id="p-total-text" class="text-sm sm:text-base font-black text-amber-400">-</span>
+                                        </div>
+                                        <span id="p-doubles-badge" class="hidden px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-[10px] sm:text-[11px] shadow-md">
+                                            ✨ 豹子！
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Center VS Divider (1 col) -->
+                                <div class="col-span-1 flex flex-col items-center justify-center">
+                                    <span class="font-fantasy font-black text-xs sm:text-lg text-rose-500 italic drop-shadow">VS</span>
+                                </div>
+
+                                <!-- Computer Dice Side (5 cols) -->
+                                <div class="col-span-5 flex flex-col items-center bg-slate-800/60 border border-rose-500/25 rounded-xl p-1.5 sm:p-3">
+                                    <div class="flex items-center gap-1 mb-1.5">
+                                        <span class="text-xs sm:text-sm">🤖</span>
+                                        <span class="font-bold text-[11px] sm:text-xs text-rose-300">暗黑魔王</span>
+                                    </div>
+
+                                    <!-- 2 Visual 3D Dice -->
+                                    <div class="flex items-center justify-center gap-1.5 sm:gap-3 my-1">
+                                        <div id="c-die-1" class="die-3d w-10 h-10 sm:w-14 sm:h-14 rounded-xl p-1.5 sm:p-2 grid grid-cols-3 grid-rows-3 gap-0.5"></div>
+                                        <div id="c-die-2" class="die-3d w-10 h-10 sm:w-14 sm:h-14 rounded-xl p-1.5 sm:p-2 grid grid-cols-3 grid-rows-3 gap-0.5"></div>
+                                    </div>
+
+                                    <!-- Total & Doubles Badge -->
+                                    <div class="mt-1.5 flex flex-col items-center gap-1 min-h-[34px] sm:min-h-[40px]">
+                                        <div class="text-[11px] sm:text-xs text-slate-300 font-bold">
+                                            總點數：<span id="c-total-text" class="text-sm sm:text-base font-black text-rose-400">-</span>
+                                        </div>
+                                        <span id="c-doubles-badge" class="hidden px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 to-purple-500 text-white font-black text-[10px] sm:text-[11px] shadow-md">
+                                            ✨ 豹子！
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Battle Announcer Banner & Roll Button -->
+                            <div class="relative z-10 space-y-2">
+                                <div id="announcer-banner"
+                                    class="bg-slate-950/90 border border-slate-700/90 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-amber-200 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug">
+                                    點擊下方按鈕擲出雙骰，展開競速對決！
+                                </div>
+
+                                <button id="roll-btn" onclick="handleRollTurn()"
+                                    class="w-full py-2.5 sm:py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-950 font-black text-sm sm:text-lg tracking-wider shadow-[0_4px_20px_rgba(245,158,11,0.45)] transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                                    <span>🎲</span>
+                                    <span id="roll-btn-text">擲出雙骰！</span>
+                                </button>
+                            </div>
+
+                            <!-- Floating Tile Event Card Toast (Inside Arena) -->
+                            <div id="tile-event-popup" class="hidden absolute inset-x-3 top-1/2 -translate-y-1/2 z-30 bg-slate-900/95 border-2 border-amber-400 rounded-2xl p-4 shadow-[0_0_40px_rgba(0,0,0,0.9)] text-center animate-card-pop">
+                                <div id="event-popup-icon" class="text-4xl mb-1">❓</div>
+                                <div id="event-popup-title" class="font-black text-base sm:text-lg text-amber-300">機會卡觸發！</div>
+                                <div id="event-popup-desc" class="text-xs sm:text-sm text-slate-200 mt-1">發現捷徑！額外前進 2 格！</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================================================== -->
+            <!-- RIGHT SIDE DASHBOARD & ADVENTURE LOG                 -->
+            <!-- ==================================================== -->
+            <aside class="lg:col-span-5 xl:col-span-4 w-full flex flex-col gap-3.5">
+
+                <!-- Race Progress Cards -->
+                <div class="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 shadow-lg space-y-3.5">
+                    <div class="flex items-center justify-between border-b border-slate-700/80 pb-2">
+                        <h2 class="font-black text-sm sm:text-base text-amber-300 flex items-center gap-1.5">
+                            <span>🏁</span> 賽道進度儀表板 (目標：40 格)
+                        </h2>
+                        <span class="text-[11px] text-slate-400">一圈 20 格 × 2 圈</span>
+                    </div>
+
+                    <!-- Player Progress Card -->
+                    <div class="bg-slate-900/85 border border-amber-500/35 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-lg shadow">🛡️</span>
+                                <div>
+                                    <div id="dash-player-name" class="font-black text-sm text-amber-300">勇者小傑</div>
+                                    <div id="dash-player-tile" class="text-[11px] text-slate-400">位置：🚩 起點</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="dash-player-lap" class="inline-block px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-xs">
+                                    第 1 圈
+                                </span>
+                                <div class="text-[11px] text-slate-400 mt-0.5">
+                                    對決勝場：<span id="dash-player-wins" class="text-amber-300 font-bold">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div>
+                            <div class="flex justify-between text-[11px] font-bold mb-1">
+                                <span class="text-slate-400">總前進步數</span>
+                                <span id="dash-player-steps" class="text-amber-400">0 / 40 格</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                <div id="dash-player-bar" class="h-full bg-gradient-to-r from-amber-500 to-yellow-300 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Computer Progress Card -->
+                    <div class="bg-slate-900/85 border border-rose-500/35 rounded-xl p-3 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-lg bg-rose-500/20 border border-rose-400/50 flex items-center justify-center text-lg shadow">🤖</span>
+                                <div>
+                                    <div class="font-black text-sm text-rose-300">暗黑魔王 (AI)</div>
+                                    <div id="dash-comp-tile" class="text-[11px] text-slate-400">位置：🚩 起點</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="dash-comp-lap" class="inline-block px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 font-bold text-xs">
+                                    第 1 圈
+                                </span>
+                                <div class="text-[11px] text-slate-400 mt-0.5">
+                                    對決勝場：<span id="dash-comp-wins" class="text-rose-300 font-bold">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div>
+                            <div class="flex justify-between text-[11px] font-bold mb-1">
+                                <span class="text-slate-400">總前進步數</span>
+                                <span id="dash-comp-steps" class="text-rose-400">0 / 40 格</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                                <div id="dash-comp-bar" class="h-full bg-gradient-to-r from-rose-600 to-purple-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rule Quick-Reference Box -->
+                <div class="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-3.5 shadow-md">
+                    <h3 class="font-bold text-xs text-amber-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <span>📖</span> 規則速查表
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] sm:text-xs text-slate-300">
+                        <div class="bg-slate-900/75 rounded-lg p-2 border border-slate-700/60">
+                            <span class="text-amber-400 font-bold">✨ 豹子通殺：</span>兩顆點數相同無條件擊敗一般點數。
+                        </div>
+                        <div class="bg-slate-900/75 rounded-lg p-2 border border-slate-700/60">
+                            <span class="text-sky-400 font-bold">🔢 點數對決：</span>皆為豹子或皆無豹子時，比總點數大小。
+                        </div>
+                        <div class="bg-slate-900/75 rounded-lg p-2 border border-slate-700/60">
+                            <span class="text-emerald-400 font-bold">🏃 贏家前進：</span>獲勝方依自己骰出的總點數前進格數。
+                        </div>
+                        <div class="bg-slate-900/75 rounded-lg p-2 border border-slate-700/60">
+                            <span class="text-purple-400 font-bold">🏆 兩圈奪冠：</span>踩特殊格觸發事件，先達 40 格獲勝！
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrollable Adventure Log -->
+                <div class="bg-slate-800/80 backdrop-blur-md border border-slate-700/80 rounded-2xl p-4 shadow-lg flex-grow flex flex-col min-h-[220px] max-h-[340px]">
+                    <div class="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2.5">
+                        <h3 class="font-black text-sm text-amber-300 flex items-center gap-1.5">
+                            <span>📜</span> 冒險日誌 (Adventure Log)
+                        </h3>
+                        <span class="text-[11px] text-slate-400">即時戰況紀錄</span>
+                    </div>
+                    <div id="adventure-log" class="flex-grow overflow-y-auto space-y-2 pr-1 text-xs leading-relaxed">
+                        <div class="text-slate-500 italic text-center py-6">冒險即將開始...</div>
+                    </div>
+                </div>
+
+            </aside>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- MODAL 1: CUSTOM RESTART CONFIRMATION MODAL (No confirm())    -->
+    <!-- ============================================================ -->
+    <div id="restart-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-slate-600 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl animate-card-pop">
+            <div class="text-4xl mb-2">🔄</div>
+            <h3 class="text-xl font-black text-amber-300 mb-2">確定要重新開始嗎？</h3>
+            <p class="text-xs sm:text-sm text-slate-300 mb-5">目前的賽道進度將會重置，你可以選擇直接重開一局或返回更換技能。</p>
+            <div class="space-y-2.5">
+                <button onclick="restartSameSetup()" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all">
+                    🎲 保留角色與技能，重新開局
+                </button>
+                <button onclick="returnToSetup()" class="w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold text-sm transition-all">
+                    ⚙️ 返回更換角色與幸運骰子
+                </button>
+                <button onclick="closeRestartConfirm()" class="w-full py-2 rounded-xl text-slate-400 hover:text-slate-200 text-xs font-bold">
+                    取消，繼續遊戲
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL 2: END-OF-GAME VICTORY / DEFEAT MODAL                  -->
+    <!-- ============================================================ -->
+    <div id="gameover-modal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div id="gameover-card" class="bg-slate-800 border-2 border-amber-400/70 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-[0_0_50px_rgba(245,158,11,0.35)] relative overflow-hidden animate-card-pop">
+            <div class="absolute -top-20 -right-20 w-44 h-44 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div id="go-icon" class="text-6xl sm:text-7xl mb-3">🏆</div>
+            <h2 id="go-title" class="text-2xl sm:text-3xl font-black text-amber-300 mb-1.5">
+                恭喜奪冠！兩圈制霸！
+            </h2>
+            <p id="go-subtitle" class="text-xs sm:text-sm text-slate-300 mb-5">
+                勇者率先衝過終點線，贏得雙骰大富翁最高榮耀！
+            </p>
+
+            <!-- Match Summary Stats -->
+            <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-4 mb-6 space-y-2.5 text-left text-xs sm:text-sm">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-slate-400">冒險者 / 幸運骰子</span>
+                    <span id="go-stat-player" class="font-bold text-amber-300">勇者小傑 · 💜 魔法紫</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">最終距離比數</span>
+                    <span id="go-stat-distance" class="font-black text-emerald-400">40 格 vs 28 格</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">總進行回合數</span>
+                    <span id="go-stat-rounds" class="font-bold text-slate-200">12 回合</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">對決勝場統計</span>
+                    <span id="go-stat-wins" class="font-bold text-slate-200">玩家 7 勝 / 魔王 4 勝</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">擲出豹子次數</span>
+                    <span id="go-stat-doubles" class="font-bold text-purple-300">玩家 2 次 / 魔王 1 次</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <button onclick="restartSameSetup()"
+                    class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-base sm:text-lg shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                    <span>🔄</span> 再玩一次 (Play Again)
+                </button>
+                <button onclick="returnToSetup()"
+                    class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs sm:text-sm transition-all">
+                    ⚙️ 更換技能 / 角色
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT ENGINE                                            -->
+    <!-- ============================================================ -->
+    <script>
+        // ==========================================
+        // 1. BOARD & SKILL DEFINITIONS
+        // ==========================================
+        const MAP_SIZE = 20;
+        const GOAL_STEPS = 40; // 2 Laps = 40 steps
+
+        const BOARD_TILES = [
+            { id: 0,  emoji: "🚩", name: "起點",     type: "start"   },
+            { id: 1,  emoji: "🌲", name: "迷霧森林", type: "normal"  },
+            { id: 2,  emoji: "❓", name: "機會",     type: "chance"  },
+            { id: 3,  emoji: "🪨", name: "巨石陣",   type: "normal"  },
+            { id: 4,  emoji: "⛲", name: "許願池",   type: "wish"    },
+            { id: 5,  emoji: "🏘️", name: "冒險村莊", type: "normal"  },
+            { id: 6,  emoji: "🔮", name: "命運",     type: "fate"    },
+            { id: 7,  emoji: "🌉", name: "彩虹橋",   type: "normal"  },
+            { id: 8,  emoji: "❓", name: "機會",     type: "chance"  },
+            { id: 9,  emoji: "⛰️", name: "試煉山谷", type: "normal"  },
+            { id: 10, emoji: "🏰", name: "王國城門", type: "normal"  },
+            { id: 11, emoji: "🔮", name: "命運",     type: "fate"    },
+            { id: 12, emoji: "⛲", name: "許願池",   type: "wish"    },
+            { id: 13, emoji: "🏜️", name: "黃金沙漠", type: "normal"  },
+            { id: 14, emoji: "❓", name: "機會",     type: "chance"  },
+            { id: 15, emoji: "🌋", name: "火焰峽谷", type: "normal"  },
+            { id: 16, emoji: "🔮", name: "命運",     type: "fate"    },
+            { id: 17, emoji: "⛩️", name: "古代神殿", type: "normal"  },
+            { id: 18, emoji: "⛲", name: "許願池",   type: "wish"    },
+            { id: 19, emoji: "🌌", name: "星光大道", type: "normal"  }
+        ];
+
+        // Exact 6x6 Perimeter Coordinates (1-indexed CSS grid row/col)
+        const TILE_GRID_POS = [
+            { r: 1, c: 1 }, { r: 1, c: 2 }, { r: 1, c: 3 }, { r: 1, c: 4 }, { r: 1, c: 5 }, { r: 1, c: 6 }, // 0..5 Top
+            { r: 2, c: 6 }, { r: 3, c: 6 }, { r: 4, c: 6 }, { r: 5, c: 6 },                                 // 6..9 Right
+            { r: 6, c: 6 }, { r: 6, c: 5 }, { r: 6, c: 4 }, { r: 6, c: 3 }, { r: 6, c: 2 }, { r: 6, c: 1 }, // 10..15 Bottom
+            { r: 5, c: 1 }, { r: 4, c: 1 }, { r: 3, c: 1 }, { r: 2, c: 1 }                                  // 16..19 Left
+        ];
+
+        const SKILLS = {
+            purple: {
+                key: 'purple',
+                name: '魔法紫',
+                enName: 'Magic Purple',
+                icon: '💜',
+                initialRounds: 3,
+                colorClass: 'text-purple-300',
+                borderClass: 'border-purple-500/60',
+                badgeBg: 'bg-purple-500/20 text-purple-200'
+            },
+            blue: {
+                key: 'blue',
+                name: '星空藍',
+                enName: 'Starry Blue',
+                icon: '💙',
+                initialRounds: 1,
+                colorClass: 'text-sky-300',
+                borderClass: 'border-sky-500/60',
+                badgeBg: 'bg-sky-500/20 text-sky-200'
+            },
+            red: {
+                key: 'red',
+                name: '勇氣紅',
+                enName: 'Courage Red',
+                icon: '❤️',
+                initialRounds: 1,
+                colorClass: 'text-rose-300',
+                borderClass: 'border-rose-500/60',
+                badgeBg: 'bg-rose-500/20 text-rose-200'
+            },
+            gold: {
+                key: 'gold',
+                name: '幸運金',
+                enName: 'Lucky Gold',
+                icon: '💛',
+                initialRounds: 3,
+                colorClass: 'text-amber-300',
+                borderClass: 'border-amber-500/60',
+                badgeBg: 'bg-amber-500/20 text-amber-200'
+            }
+        };
+
+        // ==========================================
+        // 2. GAME STATE
+        // ==========================================
+        const state = {
+            playerName: '勇者小傑',
+            selectedSkill: 'purple',
+            skillEndRound: 3,
+            round: 1,
+            playerPos: 0,
+            compPos: 0,
+            playerWins: 0,
+            compWins: 0,
+            playerDoublesCount: 0,
+            compDoublesCount: 0,
+            isBusy: false,
+            soundEnabled: true
+        };
+
+        // ==========================================
+        // 3. WEB AUDIO API SOUND SYNTHESIZER
+        // ==========================================
+        let audioCtx = null;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSound(type) {
+            if (!state.soundEnabled) return;
+            try {
+                const ctx = ensureAudio();
+                const now = ctx.currentTime;
+
+                if (type === 'click') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.exponentialRampToValueAtTime(780, now + 0.08);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'dice') {
+                    // Rapid tabletop dice rattle ticks
+                    for (let i = 0; i < 6; i++) {
+                        const t = now + i * 0.075;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(220 + Math.random() * 240, t);
+                        osc.frequency.exponentialRampToValueAtTime(90, t + 0.045);
+                        gain.gain.setValueAtTime(0.16, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+                        osc.start(t);
+                        osc.stop(t + 0.045);
+                    }
+                } else if (type === 'hop') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(340, now);
+                    osc.frequency.exponentialRampToValueAtTime(560, now + 0.11);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+                    osc.start(now);
+                    osc.stop(now + 0.11);
+                } else if (type === 'doubles') {
+                    const notes = [587.33, 739.99, 880, 1174.66]; // D major arpeggio
+                    notes.forEach((freq, idx) => {
+                        const t = now + idx * 0.06;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, t);
+                        gain.gain.setValueAtTime(0.16, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                        osc.start(t);
+                        osc.stop(t + 0.25);
+                    });
+                } else if (type === 'skill') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(420, now);
+                    osc.frequency.exponentialRampToValueAtTime(980, now + 0.28);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                    osc.start(now);
+                    osc.stop(now + 0.28);
+                } else if (type === 'card') {
+                    const notes = [523.25, 659.25, 1046.5];
+                    notes.forEach((freq, idx) => {
+                        const t = now + idx * 0.07;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, t);
+                        gain.gain.setValueAtTime(0.15, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+                        osc.start(t);
+                        osc.stop(t + 0.22);
+                    });
+                } else if (type === 'winRound') {
+                    const notes = [523.25, 659.25, 783.99];
+                    notes.forEach((freq, idx) => {
+                        const t = now + idx * 0.08;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, t);
+                        gain.gain.setValueAtTime(0.16, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                        osc.start(t);
+                        osc.stop(t + 0.25);
+                    });
+                } else if (type === 'loseRound') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(240, now);
+                    osc.frequency.linearRampToValueAtTime(125, now + 0.26);
+                    gain.gain.setValueAtTime(0.14, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+                    osc.start(now);
+                    osc.stop(now + 0.26);
+                } else if (type === 'victory') {
+                    const fanfare = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+                    const times = [0, 0.11, 0.22, 0.34, 0.5, 0.64];
+                    fanfare.forEach((freq, i) => {
+                        const t = now + times[i];
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, t);
+                        gain.gain.setValueAtTime(0.22, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+                        osc.start(t);
+                        osc.stop(t + 0.35);
+                    });
+                } else if (type === 'defeat') {
+                    const notes = [392.0, 369.99, 349.23, 293.66];
+                    notes.forEach((freq, i) => {
+                        const t = now + i * 0.18;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(freq, t);
+                        gain.gain.setValueAtTime(0.14, t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+                        osc.start(t);
+                        osc.stop(t + 0.3);
+                    });
+                }
+            } catch (e) {
+                // Ignore audio block if browser restricts autoplay
+            }
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById('sound-icon').textContent = state.soundEnabled ? '🔊' : '🔇';
+            const label = document.querySelector('#sound-btn span:nth-child(2)');
+            if (label) label.textContent = state.soundEnabled ? '音效開' : '音效關';
+            if (state.soundEnabled) playSound('click');
+        }
+
+        // ==========================================
+        // 4. 3D CSS DICE PIP RENDERER
+        // ==========================================
+        const PIP_MAP = {
+            1: [4],
+            2: [2, 6],
+            3: [2, 4, 6],
+            4: [0, 2, 6, 8],
+            5: [0, 2, 4, 6, 8],
+            6: [0, 2, 3, 5, 6, 8]
+        };
+
+        function renderDieFace(el, value) {
+            el.innerHTML = '';
+            const activeIndices = PIP_MAP[value] || [4];
+            const isRedPip = (value === 1 || value === 4);
+
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'flex items-center justify-center';
+                if (activeIndices.includes(i)) {
+                    const dot = document.createElement('span');
+                    const sizeClass = value === 1 ? 'w-2.5 h-2.5 sm:w-3.5 sm:h-3.5' : 'w-1.5 h-1.5 sm:w-2.5 sm:h-2.5';
+                    const colorClass = isRedPip ? 'bg-rose-600' : 'bg-slate-900';
+                    dot.className = `pip block ${sizeClass} ${colorClass}`;
+                    cell.appendChild(dot);
+                }
+                el.appendChild(cell);
+            }
+        }
+
+        // ==========================================
+        // 5. SETUP SCREEN LOGIC
+        // ==========================================
+        function selectSkill(skillKey) {
+            state.selectedSkill = skillKey;
+            playSound('click');
+
+            document.querySelectorAll('.skill-card').forEach(card => {
+                card.classList.remove(
+                    'border-purple-400', 'bg-purple-950/30', 'shadow-[0_0_20px_rgba(168,85,247,0.3)]',
+                    'border-sky-400', 'bg-sky-950/30', 'shadow-[0_0_20px_rgba(56,189,248,0.3)]',
+                    'border-rose-400', 'bg-rose-950/30', 'shadow-[0_0_20px_rgba(244,63,94,0.3)]',
+                    'border-amber-400', 'bg-amber-950/30', 'shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                );
+                card.classList.add('border-slate-700', 'bg-slate-900/80');
+                card.querySelector('.check-badge').classList.add('hidden');
+            });
+
+            const activeCard = document.getElementById(`skill-card-${skillKey}`);
+            activeCard.classList.remove('border-slate-700', 'bg-slate-900/80');
+            activeCard.querySelector('.check-badge').classList.remove('hidden');
+
+            if (skillKey === 'purple') {
+                activeCard.classList.add('border-purple-400', 'bg-purple-950/30', 'shadow-[0_0_20px_rgba(168,85,247,0.3)]');
+            } else if (skillKey === 'blue') {
+                activeCard.classList.add('border-sky-400', 'bg-sky-950/30', 'shadow-[0_0_20px_rgba(56,189,248,0.3)]');
+            } else if (skillKey === 'red') {
+                activeCard.classList.add('border-rose-400', 'bg-rose-950/30', 'shadow-[0_0_20px_rgba(244,63,94,0.3)]');
+            } else if (skillKey === 'gold') {
+                activeCard.classList.add('border-amber-400', 'bg-amber-950/30', 'shadow-[0_0_20px_rgba(245,158,11,0.3)]');
+            }
+        }
+
+        function startAdventure(e) {
+            e.preventDefault();
+            const rawName = document.getElementById('player-name').value.trim();
+            state.playerName = rawName || '勇者小傑';
+
+            playSound('winRound');
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            buildBoardTiles();
+            initNewMatch();
+        }
+
+        // ==========================================
+        // 6. MONOPOLY BOARD BUILDER & PAWN RENDERING
+        // ==========================================
+        function buildBoardTiles() {
+            const board = document.getElementById('monopoly-board');
+            // Remove existing tiles if rebuilding
+            board.querySelectorAll('.board-tile').forEach(el => el.remove());
+
+            BOARD_TILES.forEach((tile, idx) => {
+                const pos = TILE_GRID_POS[idx];
+                const tileEl = document.createElement('div');
+                tileEl.id = `board-tile-${idx}`;
+                tileEl.style.gridRow = pos.r;
+                tileEl.style.gridColumn = pos.c;
+
+                // Distinct color coding for special tiles
+                let styleClasses = 'bg-slate-800/90 border-slate-700/90 text-slate-200';
+                let badgeColor = 'text-slate-400';
+
+                if (tile.type === 'start') {
+                    styleClasses = 'bg-gradient-to-br from-amber-500/30 to-yellow-600/25 border-amber-400 text-amber-200';
+                    badgeColor = 'text-amber-300 font-black';
+                } else if (tile.type === 'chance') {
+                    styleClasses = 'bg-gradient-to-br from-emerald-900/75 to-teal-900/75 border-emerald-500/60 text-emerald-100';
+                    badgeColor = 'text-emerald-300 font-bold';
+                } else if (tile.type === 'fate') {
+                    styleClasses = 'bg-gradient-to-br from-purple-900/75 to-indigo-900/75 border-purple-500/60 text-purple-100';
+                    badgeColor = 'text-purple-300 font-bold';
+                } else if (tile.type === 'wish') {
+                    styleClasses = 'bg-gradient-to-br from-sky-900/75 to-cyan-900/75 border-sky-400/60 text-sky-100';
+                    badgeColor = 'text-sky-300 font-bold';
+                }
+
+                tileEl.className = `board-tile rounded-xl sm:rounded-2xl border p-1 sm:p-1.5 flex flex-col items-center justify-between text-center relative transition-all duration-200 shadow-md ${styleClasses}`;
+
+                tileEl.innerHTML = `
+                    <div class="w-full flex items-center justify-between px-0.5">
+                        <span class="text-[9px] sm:text-[10px] font-mono opacity-60">#${idx}</span>
+                        ${tile.type !== 'normal' ? `<span class="w-1.5 h-1.5 rounded-full bg-current opacity-75"></span>` : ''}
+                    </div>
+                    <div class="text-base sm:text-2xl leading-none my-auto">${tile.emoji}</div>
+                    <div class="text-[9px] sm:text-[11px] leading-tight truncate w-full ${badgeColor}">${tile.name}</div>
+                    <div id="tile-pawns-${idx}" class="absolute inset-0 flex items-center justify-center gap-0.5 pointer-events-none z-20"></div>
+                `;
+
+                board.appendChild(tileEl);
+            });
+        }
+
+        function renderPawns(hopTarget = null) {
+            // Clear all pawn slots
+            for (let i = 0; i < MAP_SIZE; i++) {
+                const slot = document.getElementById(`tile-pawns-${i}`);
+                if (slot) slot.innerHTML = '';
+            }
+
+            const pIdx = state.playerPos % MAP_SIZE;
+            const cIdx = state.compPos % MAP_SIZE;
+
+            const pSlot = document.getElementById(`tile-pawns-${pIdx}`);
+            if (pSlot) {
+                const pToken = document.createElement('div');
+                pToken.className = `w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 border-2 border-white shadow-[0_3px_10px_rgba(0,0,0,0.8)] flex items-center justify-center text-xs sm:text-base ${hopTarget === 'player' ? 'animate-pawn-hop' : ''}`;
+                pToken.title = `${state.playerName} (${state.playerPos} 格)`;
+                pToken.textContent = '🛡️';
+                pSlot.appendChild(pToken);
+            }
+
+            const cSlot = document.getElementById(`tile-pawns-${cIdx}`);
+            if (cSlot) {
+                const cToken = document.createElement('div');
+                cToken.className = `w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-rose-500 to-purple-600 border-2 border-white shadow-[0_3px_10px_rgba(0,0,0,0.8)] flex items-center justify-center text-xs sm:text-base ${hopTarget === 'comp' ? 'animate-pawn-hop' : ''}`;
+                cToken.title = `暗黑魔王 (${state.compPos} 格)`;
+                cToken.textContent = '🤖';
+                cSlot.appendChild(cToken);
+            }
+        }
+
+        function flashTile(tileIdx) {
+            const tile = document.getElementById(`board-tile-${tileIdx}`);
+            if (!tile) return;
+            tile.classList.add('tile-active-flash');
+            setTimeout(() => tile.classList.remove('tile-active-flash'), 450);
+        }
+
+        // ==========================================
+        // 7. MATCH INITIALIZATION & UI SYNC
+        // ==========================================
+        function initNewMatch() {
+            const skill = SKILLS[state.selectedSkill];
+            state.skillEndRound = skill.initialRounds;
+            state.round = 1;
+            state.playerPos = 0;
+            state.compPos = 0;
+            state.playerWins = 0;
+            state.compWins = 0;
+            state.playerDoublesCount = 0;
+            state.compDoublesCount = 0;
+            state.isBusy = false;
+
+            document.getElementById('arena-player-label').textContent = state.playerName;
+            document.getElementById('dash-player-name').textContent = state.playerName;
+
+            // Reset Dice Visuals to initial 6 & 6 / 1 & 1
+            renderDieFace(document.getElementById('p-die-1'), 6);
+            renderDieFace(document.getElementById('p-die-2'), 6);
+            renderDieFace(document.getElementById('c-die-1'), 1);
+            renderDieFace(document.getElementById('c-die-2'), 1);
+            resetDieStyles();
+
+            document.getElementById('p-total-text').textContent = '-';
+            document.getElementById('c-total-text').textContent = '-';
+            document.getElementById('p-doubles-badge').classList.add('hidden');
+            document.getElementById('c-doubles-badge').classList.add('hidden');
+            document.getElementById('skill-flash-banner').classList.add('hidden');
+            document.getElementById('tile-event-popup').classList.add('hidden');
+
+            document.getElementById('announcer-banner').textContent = '點擊下方按鈕擲出雙骰，展開兩圈競速對決！';
+            document.getElementById('announcer-banner').className =
+                'bg-slate-950/90 border border-slate-700/90 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-amber-200 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug';
+
+            const rollBtn = document.getElementById('roll-btn');
+            rollBtn.disabled = false;
+            document.getElementById('roll-btn-text').textContent = '擲出雙骰！';
+
+            // Reset Adventure Log
+            const logEl = document.getElementById('adventure-log');
+            logEl.innerHTML = '';
+            addLog(`🚩 冒險開始！<b>${state.playerName}</b> 攜帶【${skill.icon} ${skill.name}】踏上賽道，先跑完 2 圈（40 格）奪冠！`, 'system');
+
+            renderPawns();
+            updateDashboardUI();
+        }
+
+        function resetDieStyles() {
+            ['p-die-1', 'p-die-2', 'c-die-1', 'c-die-2'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('die-purple-lock', 'die-starry-glow', 'die-doubles-glow', 'animate-dice-roll');
+            });
+        }
+
+        function updateDashboardUI() {
+            const skill = SKILLS[state.selectedSkill];
+            const isSkillActive = state.round <= state.skillEndRound;
+            const remainingRounds = Math.max(0, state.skillEndRound - state.round + 1);
+
+            // Header Round & Skill Pill
+            document.getElementById('header-round').textContent = `第 ${state.round} 回合`;
+            document.getElementById('header-skill-icon').textContent = skill.icon;
+            document.getElementById('header-skill-name').textContent = skill.name;
+            document.getElementById('header-skill-name').className = `font-bold text-xs sm:text-sm ${skill.colorClass}`;
+
+            const statusBadge = document.getElementById('header-skill-status');
+            const turnsText = document.getElementById('header-skill-turns');
+            const skillPill = document.getElementById('header-skill-pill');
+
+            if (isSkillActive) {
+                statusBadge.textContent = '🔥 技能發動中';
+                statusBadge.className = 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 border border-amber-500/40';
+                turnsText.textContent = `生效至第 ${state.skillEndRound} 回合（剩餘 ${remainingRounds} 回合）`;
+                skillPill.className = `bg-slate-900/90 border ${skill.borderClass} rounded-xl px-3 py-1.5 flex items-center gap-2 transition-all shadow-md`;
+            } else {
+                statusBadge.textContent = '💤 技能已結束';
+                statusBadge.className = 'text-[11px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400';
+                turnsText.textContent = '可踩踏「⛲ 許願池」重新延長！';
+                skillPill.className = 'bg-slate-900/70 border border-slate-700/70 rounded-xl px-3 py-1.5 flex items-center gap-2 opacity-75 transition-all';
+            }
+
+            // Player Progress Card
+            const pTile = BOARD_TILES[state.playerPos % MAP_SIZE];
+            const pLap = state.playerPos >= GOAL_STEPS ? '已衝線！' : `第 ${Math.floor(state.playerPos / MAP_SIZE) + 1} 圈`;
+            document.getElementById('dash-player-tile').textContent = `位置：${pTile.emoji} ${pTile.name} (#${state.playerPos % MAP_SIZE})`;
+            document.getElementById('dash-player-lap').textContent = pLap;
+            document.getElementById('dash-player-wins').textContent = state.playerWins;
+            document.getElementById('dash-player-steps').textContent = `${Math.min(state.playerPos, GOAL_STEPS)} / ${GOAL_STEPS} 格`;
+            document.getElementById('dash-player-bar').style.width = `${Math.min(100, (state.playerPos / GOAL_STEPS) * 100)}%`;
+
+            // Computer Progress Card
+            const cTile = BOARD_TILES[state.compPos % MAP_SIZE];
+            const cLap = state.compPos >= GOAL_STEPS ? '已衝線！' : `第 ${Math.floor(state.compPos / MAP_SIZE) + 1} 圈`;
+            document.getElementById('dash-comp-tile').textContent = `位置：${cTile.emoji} ${cTile.name} (#${state.compPos % MAP_SIZE})`;
+            document.getElementById('dash-comp-lap').textContent = cLap;
+            document.getElementById('dash-comp-wins').textContent = state.compWins;
+            document.getElementById('dash-comp-steps').textContent = `${Math.min(state.compPos, GOAL_STEPS)} / ${GOAL_STEPS} 格`;
+            document.getElementById('dash-comp-bar').style.width = `${Math.min(100, (state.compPos / GOAL_STEPS) * 100)}%`;
+        }
+
+        function addLog(htmlText, type = 'normal') {
+            const logEl = document.getElementById('adventure-log');
+            const entry = document.createElement('div');
+
+            let style = 'bg-slate-900/80 border-slate-700/70 text-slate-300';
+            if (type === 'win') style = 'bg-amber-950/40 border-amber-500/40 text-amber-100';
+            if (type === 'lose') style = 'bg-rose-950/40 border-rose-500/40 text-rose-100';
+            if (type === 'skill') style = 'bg-purple-950/45 border-purple-500/45 text-purple-100';
+            if (type === 'event') style = 'bg-emerald-950/45 border-emerald-500/45 text-emerald-100';
+            if (type === 'system') style = 'bg-slate-900 border-amber-500/30 text-amber-200 font-semibold';
+
+            entry.className = `p-2.5 rounded-xl border ${style} animate-card-pop`;
+            entry.innerHTML = htmlText;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // ==========================================
+        // 8. CORE TURN EXECUTION & ANIMATIONS
+        // ==========================================
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        function randDie() {
+            return Math.floor(Math.random() * 6) + 1;
+        }
+
+        async function handleRollTurn() {
+            if (state.isBusy) return;
+            state.isBusy = true;
+
+            const rollBtn = document.getElementById('roll-btn');
+            const rollBtnText = document.getElementById('roll-btn-text');
+            const announcer = document.getElementById('announcer-banner');
+            const skillBanner = document.getElementById('skill-flash-banner');
+
+            rollBtn.disabled = true;
+            rollBtnText.textContent = '骰子滾動中...';
+            skillBanner.classList.add('hidden');
+            document.getElementById('p-doubles-badge').classList.add('hidden');
+            document.getElementById('c-doubles-badge').classList.add('hidden');
+
+            resetDieStyles();
+
+            const skillActive = state.round <= state.skillEndRound;
+            const skillKey = state.selectedSkill;
+
+            // Pre-determine Player Dice
+            let p1, p2;
+            if (skillActive && skillKey === 'purple') {
+                p1 = 6;
+                p2 = randDie();
+            } else if (skillActive && skillKey === 'blue') {
+                p1 = randDie();
+                p2 = p1;
+            } else {
+                p1 = randDie();
+                p2 = randDie();
+            }
+
+            // Pre-determine Computer Dice
+            let c1 = randDie();
+            let c2 = randDie();
+            let initialCompDoubles = (c1 === c2);
+            let luckyGoldTriggered = false;
+            let rerollCount = 0;
+
+            if (skillActive && skillKey === 'gold' && initialCompDoubles) {
+                luckyGoldTriggered = true;
+                while (c1 === c2) {
+                    rerollCount++;
+                    c1 = randDie();
+                    c2 = randDie();
+                }
+            }
+
+            // Start Rolling Animation
+            playSound('dice');
+            announcer.textContent = '🎲 雙骰高速旋轉中...';
+
+            const pDie1El = document.getElementById('p-die-1');
+            const pDie2El = document.getElementById('p-die-2');
+            const cDie1El = document.getElementById('c-die-1');
+            const cDie2El = document.getElementById('c-die-2');
+
+            // If Magic Purple active, Die 1 locks to 6 immediately with purple aura!
+            if (skillActive && skillKey === 'purple') {
+                renderDieFace(pDie1El, 6);
+                pDie1El.classList.add('die-purple-lock');
+                pDie2El.classList.add('animate-dice-roll');
+                skillBanner.textContent = '💜 【魔法紫】第 1 顆骰子已鎖定為 6 點！';
+                skillBanner.className = 'text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-500/25 border border-purple-400/60 text-purple-200 animate-card-pop';
+                skillBanner.classList.remove('hidden');
+                playSound('skill');
+            } else {
+                pDie1El.classList.add('animate-dice-roll');
+                pDie2El.classList.add('animate-dice-roll');
+            }
+
+            cDie1El.classList.add('animate-dice-roll');
+            cDie2El.classList.add('animate-dice-roll');
+
+            // Rapidly cycle random faces during animation
+            const tumbleInterval = setInterval(() => {
+                if (!(skillActive && skillKey === 'purple')) {
+                    renderDieFace(pDie1El, randDie());
+                }
+                renderDieFace(pDie2El, randDie());
+                renderDieFace(cDie1El, randDie());
+                renderDieFace(cDie2El, randDie());
+            }, 85);
+
+            await sleep(620);
+            clearInterval(tumbleInterval);
+
+            // Stop player dice & reveal final values
+            pDie1El.classList.remove('animate-dice-roll');
+            pDie2El.classList.remove('animate-dice-roll');
+            renderDieFace(pDie1El, p1);
+            renderDieFace(pDie2El, p2);
+
+            if (skillActive && skillKey === 'blue') {
+                pDie1El.classList.add('die-starry-glow');
+                pDie2El.classList.add('die-starry-glow');
+                skillBanner.textContent = `💙 【星空藍】星光匯聚，必定擲出豹子【${p1}, ${p2}】！`;
+                skillBanner.className = 'text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-lg bg-sky-500/25 border border-sky-400/60 text-sky-200 animate-card-pop';
+                skillBanner.classList.remove('hidden');
+                playSound('skill');
+            }
+
+            // Handle Computer reveal (with Lucky Gold dramatic reroll if triggered!)
+            cDie1El.classList.remove('animate-dice-roll');
+            cDie2El.classList.remove('animate-dice-roll');
+
+            if (luckyGoldTriggered) {
+                // Briefly show a double on computer dice before shattering it!
+                const fakeDouble = randDie();
+                renderDieFace(cDie1El, fakeDouble);
+                renderDieFace(cDie2El, fakeDouble);
+                cDie1El.classList.add('die-doubles-glow');
+                cDie2El.classList.add('die-doubles-glow');
+
+                skillBanner.textContent = `💛 【幸運金發動】偵測到魔王擲出豹子！強制重擲破除豹子...`;
+                skillBanner.className = 'text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/30 border border-amber-400 text-amber-200 animate-card-pop';
+                skillBanner.classList.remove('hidden');
+                playSound('skill');
+
+                await sleep(650);
+
+                // Re-tumble computer dice
+                cDie1El.classList.remove('die-doubles-glow');
+                cDie2El.classList.remove('die-doubles-glow');
+                cDie1El.classList.add('animate-dice-roll');
+                cDie2El.classList.add('animate-dice-roll');
+                playSound('dice');
+                await sleep(420);
+                cDie1El.classList.remove('animate-dice-roll');
+                cDie2El.classList.remove('animate-dice-roll');
+            }
+
+            renderDieFace(cDie1El, c1);
+            renderDieFace(cDie2El, c2);
+
+            const pTotal = p1 + p2;
+            const cTotal = c1 + c2;
+            const pIsDoubles = (p1 === p2);
+            const cIsDoubles = (c1 === c2);
+
+            document.getElementById('p-total-text').textContent = pTotal;
+            document.getElementById('c-total-text').textContent = cTotal;
+
+            if (pIsDoubles) {
+                state.playerDoublesCount++;
+                document.getElementById('p-doubles-badge').classList.remove('hidden');
+                pDie1El.classList.add('die-doubles-glow');
+                pDie2El.classList.add('die-doubles-glow');
+            }
+            if (cIsDoubles) {
+                state.compDoublesCount++;
+                document.getElementById('c-doubles-badge').classList.remove('hidden');
+                cDie1El.classList.add('die-doubles-glow');
+                cDie2El.classList.add('die-doubles-glow');
+            }
+            if (pIsDoubles || cIsDoubles) {
+                playSound('doubles');
+            }
+
+            // Log Dice Roll
+            let rollLog = `<b>第 ${state.round} 回合</b>：${state.playerName} 擲出【${p1}, ${p2}】(${pTotal}點${pIsDoubles ? ' ✨豹子' : ''}) vs 魔王【${c1}, ${c2}】(${cTotal}點${cIsDoubles ? ' ✨豹子' : ''})`;
+            if (skillActive && skillKey === 'purple') rollLog += ` <span class="text-purple-300">[💜魔法紫鎖6]</span>`;
+            if (skillActive && skillKey === 'blue') rollLog += ` <span class="text-sky-300">[💙星空藍豹子]</span>`;
+            if (luckyGoldTriggered) rollLog += ` <span class="text-amber-300">[💛幸運金重擲${rerollCount}次]</span>`;
+
+            // ==========================================
+            // 9. DETERMINE ROUND WINNER (豹子通殺 > 點數對決)
+            // ==========================================
+            let outcome = 'draw'; // 'player' | 'comp' | 'draw'
+            let reasonText = '';
+
+            if (pIsDoubles && !cIsDoubles) {
+                outcome = 'player';
+                reasonText = `✨ 豹子通殺！${state.playerName} 向前推進 ${pTotal} 格！`;
+            } else if (cIsDoubles && !pIsDoubles) {
+                outcome = 'comp';
+                reasonText = `⚠️ 魔王豹子通殺！魔王將前進 ${cTotal} 格！`;
+            } else {
+                const bothDoublesNote = (pIsDoubles && cIsDoubles) ? '雙方皆豹子，改比總點數！' : '';
+                if (pTotal > cTotal) {
+                    outcome = 'player';
+                    reasonText = `🎉 ${bothDoublesNote}點數 ${pTotal} > ${cTotal}，${state.playerName} 前進 ${pTotal} 格！`;
+                } else if (cTotal > pTotal) {
+                    outcome = 'comp';
+                    reasonText = `💥 ${bothDoublesNote}點數 ${cTotal} > ${pTotal}，魔王獲得前進機會！`;
+                } else {
+                    outcome = 'draw';
+                    reasonText = `🤝 ${bothDoublesNote}雙方同為 ${pTotal} 點平手，本回合無人前進！`;
+                }
+            }
+
+            await sleep(350);
+
+            if (outcome === 'player') {
+                state.playerWins++;
+                playSound('winRound');
+                announcer.textContent = reasonText;
+                announcer.className =
+                    'bg-amber-950/90 border border-amber-400 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-amber-200 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug shadow-md';
+                addLog(`${rollLog} ➔ <b>玩家勝出，前進 ${pTotal} 格！</b>`, 'win');
+
+                await movePawnStepByStep('player', pTotal);
+                if (checkVictoryCondition()) return;
+
+                await resolveLandingTile('player');
+                if (checkVictoryCondition()) return;
+
+            } else if (outcome === 'comp') {
+                // Check Courage Red Skill!
+                if (skillActive && skillKey === 'red') {
+                    playSound('skill');
+                    skillBanner.textContent = '❤️ 【勇氣紅發動】神聖護盾抵銷了魔王勝場，魔王無法前進！';
+                    skillBanner.className = 'text-[11px] sm:text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-500/30 border border-rose-400 text-rose-200 animate-card-pop';
+                    skillBanner.classList.remove('hidden');
+
+                    announcer.textContent = '🛡️ 【勇氣紅】絕對防禦生效！抵銷魔王勝場，魔王原地踏步！';
+                    announcer.className =
+                        'bg-rose-950/90 border border-rose-400 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-rose-200 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug';
+                    addLog(`${rollLog} ➔ ❤️ <b>勇氣紅發動！抵銷魔王勝場，魔王不前進！</b>`, 'skill');
+                } else {
+                    state.compWins++;
+                    playSound('loseRound');
+                    announcer.textContent = reasonText;
+                    announcer.className =
+                        'bg-rose-950/90 border border-rose-500/80 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-rose-200 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug';
+                    addLog(`${rollLog} ➔ <b>魔王勝出，前進 ${cTotal} 格！</b>`, 'lose');
+
+                    await movePawnStepByStep('comp', cTotal);
+                    if (checkVictoryCondition()) return;
+
+                    await resolveLandingTile('comp');
+                    if (checkVictoryCondition()) return;
+                }
+            } else {
+                playSound('click');
+                announcer.textContent = reasonText;
+                announcer.className =
+                    'bg-slate-900/95 border border-slate-600 rounded-xl px-2.5 py-1.5 sm:py-2 text-center text-[11px] sm:text-sm font-bold text-slate-300 min-h-[36px] sm:min-h-[42px] flex items-center justify-center leading-snug';
+                addLog(`${rollLog} ➔ 平手，無人前進。`, 'normal');
+            }
+
+            // Advance to next round
+            state.round++;
+            updateDashboardUI();
+
+            state.isBusy = false;
+            rollBtn.disabled = false;
+            rollBtnText.textContent = '擲出雙骰！';
+        }
+
+        // ==========================================
+        // 10. STEP-BY-STEP PAWN MOVEMENT & TILE EVENTS
+        // ==========================================
+        async function movePawnStepByStep(who, steps) {
+            const direction = steps >= 0 ? 1 : -1;
+            const totalSteps = Math.abs(steps);
+
+            for (let i = 0; i < totalSteps; i++) {
+                if (who === 'player') {
+                    state.playerPos = Math.max(0, state.playerPos + direction);
+                    flashTile(state.playerPos % MAP_SIZE);
+                } else {
+                    state.compPos = Math.max(0, state.compPos + direction);
+                    flashTile(state.compPos % MAP_SIZE);
+                }
+
+                playSound('hop');
+                renderPawns(who);
+                updateDashboardUI();
+
+                // Stop immediately if someone hits 40 steps
+                if (state.playerPos >= GOAL_STEPS || state.compPos >= GOAL_STEPS) {
+                    break;
+                }
+                await sleep(230);
+            }
+        }
+
+        async function showTileEventPopup(icon, title, desc, borderColorClass = 'border-amber-400') {
+            const popup = document.getElementById('tile-event-popup');
+            document.getElementById('event-popup-icon').textContent = icon;
+            document.getElementById('event-popup-title').textContent = title;
+            document.getElementById('event-popup-desc').textContent = desc;
+            popup.className = `absolute inset-x-3 top-1/2 -translate-y-1/2 z-30 bg-slate-900/95 border-2 ${borderColorClass} rounded-2xl p-4 shadow-[0_0_40px_rgba(0,0,0,0.9)] text-center animate-card-pop`;
+            popup.classList.remove('hidden');
+            playSound('card');
+
+            await sleep(1350);
+            popup.classList.add('hidden');
+        }
+
+        async function resolveLandingTile(who) {
+            const pos = who === 'player' ? state.playerPos : state.compPos;
+            const actorName = who === 'player' ? state.playerName : '暗黑魔王';
+            const tile = BOARD_TILES[pos % MAP_SIZE];
+
+            if (tile.type === 'chance') {
+                // ❓ 機會: +2 or +3 steps
+                const isBigBoost = Math.random() < 0.5;
+                const bonus = isBigBoost ? 3 : 2;
+                const msg = isBigBoost
+                    ? `${actorName} 順風順水！額外前進 3 格！`
+                    : `${actorName} 發現捷徑！額外前進 2 格！`;
+
+                addLog(`❓ <b>【機會卡】</b>${msg}`, 'event');
+                await showTileEventPopup('❓', '機會卡觸發！', msg, 'border-emerald-400');
+                await movePawnStepByStep(who, bonus);
+
+            } else if (tile.type === 'fate') {
+                // 🔮 命運: -2, -3, or +4 steps
+                const roll = Math.random();
+                let delta, msg;
+                if (roll < 0.35) {
+                    delta = -2;
+                    msg = `${actorName} 踩到泥沼陷阱，後退 2 格！`;
+                } else if (roll < 0.7) {
+                    delta = -3;
+                    msg = `${actorName} 迷失方向，後退 3 格！`;
+                } else {
+                    delta = 4;
+                    msg = `${actorName} 獲得神明眷顧！驚喜前進 4 格！`;
+                }
+
+                addLog(`🔮 <b>【命運卡】</b>${msg}`, 'event');
+                await showTileEventPopup('🔮', '命運之輪轉動！', msg, 'border-purple-400');
+                await movePawnStepByStep(who, delta);
+
+            } else if (tile.type === 'wish') {
+                // ⛲ 許願池: Player extends skill +1 round (or reactivates for next round); Computer +2 steps
+                if (who === 'player') {
+                    const skill = SKILLS[state.selectedSkill];
+                    const wasExpired = state.round > state.skillEndRound;
+                    state.skillEndRound = Math.max(state.skillEndRound, state.round) + 1;
+                    updateDashboardUI();
+
+                    const msg = wasExpired
+                        ? `${state.playerName} 向許願池祈禱，【${skill.icon} ${skill.name}】重新喚醒 1 回合！`
+                        : `${state.playerName} 向許願池祈禱，【${skill.icon} ${skill.name}】效果延長 1 回合！`;
+
+                    addLog(`⛲ <b>【許願池】</b>${msg}`, 'skill');
+                    await showTileEventPopup('⛲', '許願池的祝福！', msg, 'border-sky-400');
+                } else {
+                    const msg = `暗黑魔王向許願池許願，獲得前進 2 格的祝福！`;
+                    addLog(`⛲ <b>【許願池】</b>${msg}`, 'event');
+                    await showTileEventPopup('⛲', '許願池的祝福！', msg, 'border-sky-400');
+                    await movePawnStepByStep('comp', 2);
+                }
+            }
+        }
+
+        // ==========================================
+        // 11. VICTORY CHECK & END-OF-GAME MODAL
+        // ==========================================
+        function checkVictoryCondition() {
+            if (state.playerPos < GOAL_STEPS && state.compPos < GOAL_STEPS) {
+                return false;
+            }
+
+            const playerWon = state.playerPos >= GOAL_STEPS;
+            const skill = SKILLS[state.selectedSkill];
+
+            const modal = document.getElementById('gameover-modal');
+            const card = document.getElementById('gameover-card');
+            const icon = document.getElementById('go-icon');
+            const title = document.getElementById('go-title');
+            const subtitle = document.getElementById('go-subtitle');
+
+            document.getElementById('go-stat-player').textContent = `${state.playerName} · ${skill.icon} ${skill.name}`;
+            document.getElementById('go-stat-distance').textContent =
+                `${Math.min(state.playerPos, GOAL_STEPS)} 格 vs ${Math.min(state.compPos, GOAL_STEPS)} 格`;
+            document.getElementById('go-stat-rounds').textContent = `${state.round} 回合`;
+            document.getElementById('go-stat-wins').textContent = `玩家 ${state.playerWins} 勝 / 魔王 ${state.compWins} 勝`;
+            document.getElementById('go-stat-doubles').textContent = `玩家 ${state.playerDoublesCount} 次 / 魔王 ${state.compDoublesCount} 次`;
+
+            if (playerWon) {
+                playSound('victory');
+                card.className = 'bg-slate-800 border-2 border-amber-400 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-[0_0_60px_rgba(245,158,11,0.45)] relative overflow-hidden animate-card-pop';
+                icon.textContent = '🏆';
+                title.textContent = '恭喜奪冠！兩圈制霸！';
+                title.className = 'text-2xl sm:text-3xl font-black text-amber-300 mb-1.5';
+                subtitle.textContent = `冒險者【${state.playerName}】率先跑完兩圈（40 格），成為大富翁雙骰傳奇！`;
+                addLog(`🏆 <b>最終勝利！</b>${state.playerName} 率先跑完兩圈奪冠！`, 'system');
+                launchConfetti();
+            } else {
+                playSound('defeat');
+                card.className = 'bg-slate-800 border-2 border-rose-500 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-[0_0_60px_rgba(244,63,94,0.4)] relative overflow-hidden animate-card-pop';
+                icon.textContent = '💻';
+                title.textContent = '惜敗！魔王率先衝線';
+                title.className = 'text-2xl sm:text-3xl font-black text-rose-400 mb-1.5';
+                subtitle.textContent = `暗黑魔王率先跑完兩圈（40 格），善用幸運骰子再挑戰一次吧！`;
+                addLog(`💻 <b>挑戰結束！</b>暗黑魔王率先跑完兩圈獲得勝利。`, 'lose');
+            }
+
+            modal.classList.remove('hidden');
+            return true;
+        }
+
+        // ==========================================
+        // 12. RESTART & MODAL CONTROLS
+        // ==========================================
+        function openRestartConfirm() {
+            playSound('click');
+            document.getElementById('restart-modal').classList.remove('hidden');
+        }
+
+        function closeRestartConfirm() {
+            playSound('click');
+            document.getElementById('restart-modal').classList.add('hidden');
+        }
+
+        function restartSameSetup() {
+            playSound('click');
+            document.getElementById('restart-modal').classList.add('hidden');
+            document.getElementById('gameover-modal').classList.add('hidden');
+            initNewMatch();
+        }
+
+        function returnToSetup() {
+            playSound('click');
+            document.getElementById('restart-modal').classList.add('hidden');
+            document.getElementById('gameover-modal').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // 13. SELF-CONTAINED VICTORY CONFETTI ENGINE
+        // ==========================================
+        function launchConfetti() {
+            const canvas = document.getElementById('fx-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#f59e0b', '#fde047', '#a855f7', '#38bdf8', '#10b981', '#fb7185'];
+            const pieces = Array.from({ length: 110 }, () => ({
+                x: canvas.width * 0.5 + (Math.random() - 0.5) * 200,
+                y: canvas.height * 0.45,
+                vx: (Math.random() - 0.5) * 14,
+                vy: (Math.random() - 0.85) * 14,
+                size: Math.random() * 8 + 4,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                rot: Math.random() * Math.PI * 2,
+                vRot: (Math.random() - 0.5) * 0.25,
+                life: 120
+            }));
+
+            function frame() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                pieces.forEach(p => {
+                    if (p.life <= 0) return;
+                    alive = true;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.35; // gravity
+                    p.vx *= 0.98;
+                    p.rot += p.vRot;
+                    p.life--;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = Math.min(1, p.life / 30);
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    ctx.restore();
+                });
+
+                if (alive) {
+                    requestAnimationFrame(frame);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            requestAnimationFrame(frame);
+        }
+
+        // ==========================================
+        // 14. INITIALIZE ON LOAD
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            selectSkill('purple');
+        });
+    </script>
+</body>
+</html>
